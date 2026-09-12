@@ -1,4 +1,4 @@
-name: Lean 4.33 Drive-selected bootstrap relay
+name: Lean 4.33 proof-runtime relay
 
 on:
   push:
@@ -19,58 +19,65 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          # User's private Drive object is lean-4.33.1-linux.tar.zst, size 570405234.
-          # Drive connector cannot stream >256 MiB and we do not alter its sharing state.
           url='https://github.com/leanprover/lean4/releases/download/v4.33.1/lean-4.33.1-linux.tar.zst'
           curl -L --fail --retry 5 --retry-delay 2 "$url" -o /tmp/lean-4.33.1-linux.tar.zst
           test "$(stat -c%s /tmp/lean-4.33.1-linux.tar.zst)" = '570405234'
           echo '890afd185370f85666025b883914ab4f4b339136f8c96167b69cfb62aecaf235  /tmp/lean-4.33.1-linux.tar.zst' | sha256sum -c -
+          mkdir -p /tmp/lean4
+          tar --zstd -xf /tmp/lean-4.33.1-linux.tar.zst -C /tmp/lean4 --strip-components=1
 
-      - name: Extract and compile Kmu smoke proofs
+      - name: Compile Kmu smoke proofs on full toolchain
         shell: bash
         run: |
           set -euxo pipefail
-          mkdir -p /tmp/lean4
-          tar --zstd -xf /tmp/lean-4.33.1-linux.tar.zst -C /tmp/lean4 --strip-components=1
           /tmp/lean4/bin/lean --version | tee /tmp/lean-version.txt
           /tmp/lean4/bin/lake --version | tee /tmp/lake-version.txt
           /tmp/lean4/bin/lean lean/KmuSmoke.lean 2>&1 | tee /tmp/kmu-proof.log
-          du -sh /tmp/lean4 /tmp/lean4/bin /tmp/lean4/lib /tmp/lean4/lib/lean || true
-          ldd /tmp/lean4/bin/lean || true
 
-      - name: Build and validate minimal local 4.33.1 toolchain
+      - name: Build proof-focused runtime
         shell: bash
         run: |
           set -euxo pipefail
-          mkdir -p /tmp/lean-min/bin /tmp/lean-min/lib
-          cp /tmp/lean4/bin/lean /tmp/lean-min/bin/
-          cp /tmp/lean4/bin/lake /tmp/lean-min/bin/
-          cp -a /tmp/lean4/lib/lean /tmp/lean-min/lib/
-          /tmp/lean-min/bin/lean --version
-          /tmp/lean-min/bin/lake --version
-          /tmp/lean-min/bin/lean lean/KmuSmoke.lean
-          du -sh /tmp/lean-min
-          tar -I 'zstd -12 -T0' -cf /tmp/lean-4.33.1-minimal.tar.zst -C /tmp lean-min
-          ls -lh /tmp/lean-4.33.1-minimal.tar.zst
-          sha256sum /tmp/lean-4.33.1-minimal.tar.zst | tee /tmp/lean-minimal.sha256
+          rm -rf /tmp/lean-proof
+          mkdir -p /tmp/lean-proof/bin /tmp/lean-proof/lib/lean
+          cp /tmp/lean4/bin/lean /tmp/lean-proof/bin/
+          cp /tmp/lean4/bin/lake /tmp/lean-proof/bin/
+          cd /tmp/lean4/lib/lean
+          find . -type f \( -name '*.olean' -o -name '*.so' -o -name '*.so.*' \) -exec cp --parents '{}' /tmp/lean-proof/lib/lean/ \;
+          cd "$GITHUB_WORKSPACE"
+          cat > /tmp/StdSmoke.lean <<'EOF'
+          import Std
+          example (xs : List Nat) : xs.reverse.reverse = xs := by simp
+          EOF
+          /tmp/lean-proof/bin/lean --version
+          /tmp/lean-proof/bin/lake --version
+          /tmp/lean-proof/bin/lean lean/KmuSmoke.lean
+          /tmp/lean-proof/bin/lean /tmp/StdSmoke.lean
+          du -sh /tmp/lean-proof /tmp/lean-proof/lib/lean || true
+          tar -I 'zstd -15 -T0' -cf /tmp/lean-4.33.1-proof-runtime.tar.zst -C /tmp lean-proof
+          ls -lh /tmp/lean-4.33.1-proof-runtime.tar.zst
+          stat -c '%s' /tmp/lean-4.33.1-proof-runtime.tar.zst | tee /tmp/lean-proof-runtime.size
+          sha256sum /tmp/lean-4.33.1-proof-runtime.tar.zst | tee /tmp/lean-proof-runtime.sha256
+          test "$(stat -c%s /tmp/lean-4.33.1-proof-runtime.tar.zst)" -lt 520000000
 
       - name: Upload proof report
         uses: actions/upload-artifact@v4
         with:
-          name: kmu-lean-4.33.1-proof-report
+          name: kmu-lean-4.33.1-proof-report-v2
           path: |
             /tmp/lean-version.txt
             /tmp/lake-version.txt
             /tmp/kmu-proof.log
-            /tmp/lean-minimal.sha256
+            /tmp/lean-proof-runtime.size
+            /tmp/lean-proof-runtime.sha256
             lean/KmuSmoke.lean
           if-no-files-found: error
           compression-level: 9
 
-      - name: Relay minimal Lean 4.33.1 toolchain
+      - name: Relay Lean 4.33.1 proof runtime
         uses: actions/upload-artifact@v4
         with:
-          name: lean-4.33.1-minimal
-          path: /tmp/lean-4.33.1-minimal.tar.zst
+          name: lean-4.33.1-proof-runtime
+          path: /tmp/lean-4.33.1-proof-runtime.tar.zst
           if-no-files-found: error
           compression-level: 0
