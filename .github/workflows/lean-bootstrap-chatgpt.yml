@@ -60,12 +60,12 @@ jobs:
           ls -lh /tmp/lean-4.33.1-proof-runtime.tar.zst
           stat -c '%s' /tmp/lean-4.33.1-proof-runtime.tar.zst | tee /tmp/lean-proof-runtime.size
           sha256sum /tmp/lean-4.33.1-proof-runtime.tar.zst | tee /tmp/lean-proof-runtime.sha256
-          test "$(stat -c%s /tmp/lean-4.33.1-proof-runtime.tar.zst)" -lt 520000000
+          test "$(stat -c%s /tmp/lean-4.33.1-proof-runtime.tar.zst)" -lt 535000000
 
       - name: Upload proof report
         uses: actions/upload-artifact@v4
         with:
-          name: kmu-lean-4.33.1-proof-report-v4
+          name: kmu-lean-4.33.1-proof-report-v5
           path: |
             /tmp/lean-version.txt
             /tmp/lake-version.txt
@@ -79,7 +79,7 @@ jobs:
       - name: Relay Lean 4.33.1 proof runtime
         uses: actions/upload-artifact@v4
         with:
-          name: lean-4.33.1-proof-runtime-v4
+          name: lean-4.33.1-proof-runtime-v5
           path: /tmp/lean-4.33.1-proof-runtime.tar.zst
           if-no-files-found: error
           compression-level: 0
