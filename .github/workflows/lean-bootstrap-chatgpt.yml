@@ -1,0 +1,52 @@
+name: Lean bootstrap relay
+
+on:
+  push:
+    branches:
+      - chatgpt/lean-bootstrap-20260912
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Lean 4.20.0
+        shell: bash
+        run: |
+          set -euxo pipefail
+          url='https://github.com/leanprover/lean4/releases/download/v4.20.0/lean-4.20.0-linux.tar.zst'
+          curl -L --fail --retry 5 --retry-delay 2 "$url" -o /tmp/lean-4.20.0-linux.tar.zst
+          echo 'f3b058430f87dd9569c7ebd269f0af1be7b010b754849b543ee6cf9ccc08d4f0  /tmp/lean-4.20.0-linux.tar.zst' | sha256sum -c -
+
+      - name: Extract and compile Kmu smoke proofs
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/lean4
+          tar --zstd -xf /tmp/lean-4.20.0-linux.tar.zst -C /tmp/lean4 --strip-components=1
+          /tmp/lean4/bin/lean --version | tee /tmp/lean-version.txt
+          /tmp/lean4/bin/lean lean/KmuSmoke.lean 2>&1 | tee /tmp/kmu-proof.log
+
+      - name: Upload proof report
+        uses: actions/upload-artifact@v4
+        with:
+          name: kmu-lean-proof-report
+          path: |
+            /tmp/lean-version.txt
+            /tmp/kmu-proof.log
+            lean/KmuSmoke.lean
+          if-no-files-found: error
+          compression-level: 9
+
+      - name: Relay Lean binary archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-4.20.0-linux-tarzst
+          path: /tmp/lean-4.20.0-linux.tar.zst
+          if-no-files-found: error
+          compression-level: 0
