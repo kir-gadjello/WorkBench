@@ -1,4 +1,4 @@
-name: Lean bootstrap relay
+name: Lean 4.33 Drive bootstrap relay
 
 on:
   push:
@@ -15,26 +15,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Lean 4.20.0
+      - name: Download user's Lean 4.33.1 Drive copy
         shell: bash
         run: |
           set -euxo pipefail
-          url='https://github.com/leanprover/lean4/releases/download/v4.20.0/lean-4.20.0-linux.tar.zst'
-          curl -L --fail --retry 5 --retry-delay 2 "$url" -o /tmp/lean-4.20.0-linux.tar.zst
-          echo 'f3b058430f87dd9569c7ebd269f0af1be7b010b754849b543ee6cf9ccc08d4f0  /tmp/lean-4.20.0-linux.tar.zst' | sha256sum -c -
+          file_id='1Jq40qSQL_YuiRMZpo2XOQG3yrcsWdar-'
+          url="https://drive.usercontent.google.com/download?id=${file_id}&export=download&confirm=t"
+          curl -L --fail --retry 5 --retry-delay 2 "$url" -o /tmp/lean-4.33.1-linux.tar.zst
+          ls -lh /tmp/lean-4.33.1-linux.tar.zst
+          test "$(stat -c%s /tmp/lean-4.33.1-linux.tar.zst)" = '570405234'
+          echo '890afd185370f85666025b883914ab4f4b339136f8c96167b69cfb62aecaf235  /tmp/lean-4.33.1-linux.tar.zst' | sha256sum -c -
 
       - name: Extract and compile Kmu smoke proofs
         shell: bash
         run: |
           set -euxo pipefail
           mkdir -p /tmp/lean4
-          tar --zstd -xf /tmp/lean-4.20.0-linux.tar.zst -C /tmp/lean4 --strip-components=1
+          tar --zstd -xf /tmp/lean-4.33.1-linux.tar.zst -C /tmp/lean4 --strip-components=1
           /tmp/lean4/bin/lean --version | tee /tmp/lean-version.txt
+          /tmp/lean4/bin/lake --version | tee /tmp/lake-version.txt
           /tmp/lean4/bin/lean lean/KmuSmoke.lean 2>&1 | tee /tmp/kmu-proof.log
           du -sh /tmp/lean4 /tmp/lean4/bin /tmp/lean4/lib /tmp/lean4/lib/lean || true
           ldd /tmp/lean4/bin/lean || true
 
-      - name: Build and validate minimal local toolchain
+      - name: Build and validate minimal local 4.33.1 toolchain
         shell: bash
         run: |
           set -euxo pipefail
@@ -46,26 +50,27 @@ jobs:
           /tmp/lean-min/bin/lake --version
           /tmp/lean-min/bin/lean lean/KmuSmoke.lean
           du -sh /tmp/lean-min
-          tar -I 'zstd -12 -T0' -cf /tmp/lean-4.20.0-minimal.tar.zst -C /tmp lean-min
-          ls -lh /tmp/lean-4.20.0-minimal.tar.zst
-          sha256sum /tmp/lean-4.20.0-minimal.tar.zst | tee /tmp/lean-minimal.sha256
+          tar -I 'zstd -12 -T0' -cf /tmp/lean-4.33.1-minimal.tar.zst -C /tmp lean-min
+          ls -lh /tmp/lean-4.33.1-minimal.tar.zst
+          sha256sum /tmp/lean-4.33.1-minimal.tar.zst | tee /tmp/lean-minimal.sha256
 
       - name: Upload proof report
         uses: actions/upload-artifact@v4
         with:
-          name: kmu-lean-proof-report-v2
+          name: kmu-lean-4.33.1-proof-report
           path: |
             /tmp/lean-version.txt
+            /tmp/lake-version.txt
             /tmp/kmu-proof.log
             /tmp/lean-minimal.sha256
             lean/KmuSmoke.lean
           if-no-files-found: error
           compression-level: 9
 
-      - name: Relay minimal Lean toolchain
+      - name: Relay minimal Lean 4.33.1 toolchain
         uses: actions/upload-artifact@v4
         with:
-          name: lean-4.20.0-minimal
-          path: /tmp/lean-4.20.0-minimal.tar.zst
+          name: lean-4.33.1-minimal
+          path: /tmp/lean-4.33.1-minimal.tar.zst
           if-no-files-found: error
           compression-level: 0
