@@ -34,17 +34,20 @@ jobs:
           /tmp/lean4/bin/lake --version | tee /tmp/lake-version.txt
           /tmp/lean4/bin/lean lean/KmuSmoke.lean 2>&1 | tee /tmp/kmu-proof.log
 
-      - name: Build proof-focused runtime
+      - name: Build conservative proof-focused runtime
         shell: bash
         run: |
           set -euxo pipefail
           rm -rf /tmp/lean-proof
-          mkdir -p /tmp/lean-proof/bin /tmp/lean-proof/lib/lean
+          mkdir -p /tmp/lean-proof/bin /tmp/lean-proof/lib
           cp /tmp/lean4/bin/lean /tmp/lean-proof/bin/
           cp /tmp/lean4/bin/lake /tmp/lean-proof/bin/
-          cd /tmp/lean4/lib/lean
-          find . -type f \( -name '*.olean' -o -name '*.so' -o -name '*.so.*' \) -exec cp --parents '{}' /tmp/lean-proof/lib/lean/ \;
-          cd "$GITHUB_WORKSPACE"
+          cp -a /tmp/lean4/lib/lean /tmp/lean-proof/lib/
+          echo 'Before trim:'
+          du -sh /tmp/lean-proof /tmp/lean-proof/lib/lean
+          find /tmp/lean-proof/lib/lean -type f \( -name '*.a' -o -name '*.o' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.bc' -o -name '*.ll' \) -delete
+          echo 'After trim:'
+          du -sh /tmp/lean-proof /tmp/lean-proof/lib/lean
           cat > /tmp/StdSmoke.lean <<'EOF'
           import Std
           example (xs : List Nat) : xs.reverse.reverse = xs := by simp
@@ -53,7 +56,6 @@ jobs:
           /tmp/lean-proof/bin/lake --version
           /tmp/lean-proof/bin/lean lean/KmuSmoke.lean
           /tmp/lean-proof/bin/lean /tmp/StdSmoke.lean
-          du -sh /tmp/lean-proof /tmp/lean-proof/lib/lean || true
           tar -I 'zstd -15 -T0' -cf /tmp/lean-4.33.1-proof-runtime.tar.zst -C /tmp lean-proof
           ls -lh /tmp/lean-4.33.1-proof-runtime.tar.zst
           stat -c '%s' /tmp/lean-4.33.1-proof-runtime.tar.zst | tee /tmp/lean-proof-runtime.size
@@ -63,7 +65,7 @@ jobs:
       - name: Upload proof report
         uses: actions/upload-artifact@v4
         with:
-          name: kmu-lean-4.33.1-proof-report-v2
+          name: kmu-lean-4.33.1-proof-report-v3
           path: |
             /tmp/lean-version.txt
             /tmp/lake-version.txt
@@ -77,7 +79,7 @@ jobs:
       - name: Relay Lean 4.33.1 proof runtime
         uses: actions/upload-artifact@v4
         with:
-          name: lean-4.33.1-proof-runtime
+          name: lean-4.33.1-proof-runtime-v3
           path: /tmp/lean-4.33.1-proof-runtime.tar.zst
           if-no-files-found: error
           compression-level: 0
