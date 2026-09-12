@@ -34,7 +34,7 @@ jobs:
           /tmp/lean4/bin/lake --version | tee /tmp/lake-version.txt
           /tmp/lean4/bin/lean lean/KmuSmoke.lean 2>&1 | tee /tmp/kmu-proof.log
 
-      - name: Build conservative proof-focused runtime
+      - name: Build validated proof-focused runtime
         shell: bash
         run: |
           set -euxo pipefail
@@ -45,7 +45,7 @@ jobs:
           cp -a /tmp/lean4/lib/lean /tmp/lean-proof/lib/
           echo 'Before trim:'
           du -sh /tmp/lean-proof /tmp/lean-proof/lib/lean
-          find /tmp/lean-proof/lib/lean -type f \( -name '*.a' -o -name '*.o' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.bc' -o -name '*.ll' \) -delete
+          find /tmp/lean-proof/lib/lean -type f \( -name '*.a' -o -name '*.o' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.bc' -o -name '*.ll' -o -name '*.ilean' \) -delete
           echo 'After trim:'
           du -sh /tmp/lean-proof /tmp/lean-proof/lib/lean
           cat > /tmp/StdSmoke.lean <<'EOF'
@@ -65,7 +65,7 @@ jobs:
       - name: Upload proof report
         uses: actions/upload-artifact@v4
         with:
-          name: kmu-lean-4.33.1-proof-report-v3
+          name: kmu-lean-4.33.1-proof-report-v4
           path: |
             /tmp/lean-version.txt
             /tmp/lake-version.txt
@@ -79,7 +79,7 @@ jobs:
       - name: Relay Lean 4.33.1 proof runtime
         uses: actions/upload-artifact@v4
         with:
-          name: lean-4.33.1-proof-runtime-v3
+          name: lean-4.33.1-proof-runtime-v4
           path: /tmp/lean-4.33.1-proof-runtime.tar.zst
           if-no-files-found: error
           compression-level: 0
