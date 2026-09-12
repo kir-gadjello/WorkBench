@@ -19,9 +19,8 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          file_id='1Jq40qSQL_YuiRMZpo2XOQG3yrcsWdar-'
-          url="https://drive.usercontent.google.com/download?id=${file_id}&export=download&confirm=t"
-          curl -L --fail --retry 5 --retry-delay 2 "$url" -o /tmp/lean-4.33.1-linux.tar.zst
+          python3 -m pip install --user --quiet gdown
+          ~/.local/bin/gdown --fuzzy 'https://drive.google.com/file/d/1Jq40qSQL_YuiRMZpo2XOQG3yrcsWdar-/view?usp=drive_link' -O /tmp/lean-4.33.1-linux.tar.zst
           ls -lh /tmp/lean-4.33.1-linux.tar.zst
           test "$(stat -c%s /tmp/lean-4.33.1-linux.tar.zst)" = '570405234'
           echo '890afd185370f85666025b883914ab4f4b339136f8c96167b69cfb62aecaf235  /tmp/lean-4.33.1-linux.tar.zst' | sha256sum -c -
