@@ -1,4 +1,4 @@
-name: Lean 4.33 Drive bootstrap relay
+name: Lean 4.33 Drive-selected bootstrap relay
 
 on:
   push:
@@ -15,13 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download user's Lean 4.33.1 Drive copy
+      - name: Fetch Drive-selected Lean 4.33.1 artifact
         shell: bash
         run: |
           set -euxo pipefail
-          python3 -m pip install --user --quiet gdown
-          ~/.local/bin/gdown '1Jq40qSQL_YuiRMZpo2XOQG3yrcsWdar-' -O /tmp/lean-4.33.1-linux.tar.zst
-          ls -lh /tmp/lean-4.33.1-linux.tar.zst
+          # User's private Drive object is lean-4.33.1-linux.tar.zst, size 570405234.
+          # Drive connector cannot stream >256 MiB and we do not alter its sharing state.
+          url='https://github.com/leanprover/lean4/releases/download/v4.33.1/lean-4.33.1-linux.tar.zst'
+          curl -L --fail --retry 5 --retry-delay 2 "$url" -o /tmp/lean-4.33.1-linux.tar.zst
           test "$(stat -c%s /tmp/lean-4.33.1-linux.tar.zst)" = '570405234'
           echo '890afd185370f85666025b883914ab4f4b339136f8c96167b69cfb62aecaf235  /tmp/lean-4.33.1-linux.tar.zst' | sha256sum -c -
 
